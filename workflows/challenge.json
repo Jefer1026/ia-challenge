@@ -1,0 +1,70 @@
+{
+  "name": "challenge",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -144,
+        -64
+      ],
+      "id": "380e3b99-af5a-43ac-86a5-c70b86efd411",
+      "name": "When chat message received",
+      "webhookId": "c9ae715b-ae99-4b13-b3e5-69d6b5e1f98e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://python-agent:8000/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.chatInput }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        64,
+        -64
+      ],
+      "id": "753f4728-d058-4d4d-b15b-96af796dafbe",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2deb0eab-5e6a-4e1f-ad84-3bffeaf38019",
+  "meta": {
+    "instanceId": "2547ba7fd4eaf691327394ef8a97d02985e654fb19eb5839636c3c52950617b0"
+  },
+  "nodeGroups": [],
+  "id": "NT9GDIKI0gbeoIMd",
+  "tags": []
+}

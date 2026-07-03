@@ -12,3 +12,5 @@ agentchroma_db/
 .git/
 .vscode/
 *.log
+n8n/ollama_data/
+n8n/n8n_data/
