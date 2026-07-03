@@ -33,21 +33,21 @@ class AgentRAG:
                 self.process_pdf(ruta_completa)
 
     def process_pdf(self, file_path):
-        file_name = os.path.basename(file_path) # Ej: "politica_privacidad.pdf"
+        file_name = os.path.basename(file_path)
         try:
             reader = PdfReader(file_path)
+            docs, ids, metas = [], [], []
             for i, page in enumerate(reader.pages):
                 text = page.extract_text()
                 if text.strip():
-                    page_id = f"{file_name}_page_{i}"
-                    # Guardamos el nombre del archivo en los metadatos
-                    self.collection.add(
-                        documents=[text], 
-                        ids=[page_id],
-                        metadatas=[{"source": file_name}] 
-                    )
+                    docs.append(text)
+                    ids.append(f"{file_name}_page_{i}")
+                    metas.append({"source": file_name})
+            if docs:
+                self.collection.upsert(documents=docs, ids=ids, metadatas=metas)  # una sola llamada
         except Exception as e:
             print(f"Error procesando {file_path}: {e}")
+
 
     def query_data(self, pregunta):
         # 1. Realizamos la búsqueda
@@ -77,7 +77,9 @@ class AgentRAG:
 rag = AgentRAG()
 
 class AgentChat:
-    def __init__(self, model="llama3.1"):
+  
+
+    def __init__(self, model="llama3.1:8b-instruct-q4_K_M"):
         self.model = model
         self.history = [{
             "role": "system", 
@@ -88,7 +90,9 @@ class AgentChat:
             - FORMATO: Máximo 2 oraciones. Sé breve, profesional y evita introducciones como 'Una respuesta generalizada sería' o 'El documento dice'."""
         }]
 
+    
     def answer(self, user_input):
+        MAX_TURNOS = 6
         # 1. Obtenemos contexto solo si es necesario (lógica de umbral)
         contexto = ""
         if len(user_input) >= 20:
@@ -113,8 +117,10 @@ class AgentChat:
         content = response['message']['content']
         
         # 6. Guardamos solo la respuesta del asistente en el historial
-        self.history.append({"role": "assistant", "content": content})
-        
+        self.history.append({"role": "user", "content": user_input})
+        # conserva system prompt + últimos N turnos
+        historial_recortado = [self.history[0]] + self.history[-(MAX_TURNOS * 2):]
+        mensajes_temporales = historial_recortado[:-1] + [{"role": "user", "content": prompt_para_modelo}]
         return content
 agent = AgentChat()
 
@@ -123,20 +129,10 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.post("/chat")
-async def chat(req: ChatRequest):
+def chat(req: ChatRequest):  # sin async
     respuesta = agent.answer(req.message)
     return {"response": respuesta}
 
-@app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
-    # Guardamos temporalmente para procesar
-    temp_path = f"temp_{file.filename}"
-    with open(temp_path, "wb") as buffer:
-        buffer.write(await file.read())
-    
-    rag.process_pdf(temp_path)
-    os.remove(temp_path) # Limpiamos
-    return {"status": "Documento procesado"}
 
 if __name__ == "__main__":
     import uvicorn
