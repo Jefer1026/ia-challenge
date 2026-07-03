@@ -1,0 +1,14 @@
+.env
+*.pem
+__pycache__/
+.DS_Store
+n8n/ollama_data/
+n8n/n8n_data/
+
+venv/
+.venv/
+env/
+agentchroma_db/
+.git/
+.vscode/
+*.log
