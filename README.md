@@ -5,6 +5,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-LLM-black)
 ![n8n](https://img.shields.io/badge/n8n-Automation-EA4B71)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 Plataforma de automatización conversacional que combina **n8n** (orquestación), un **agente Python con RAG** (FastAPI + ChromaDB) y **Ollama** (LLM local). Permite chatear con un asistente ("Jeferson") que responde usando documentos PDF indexados y conocimiento general del modelo `llama3.1:8b-instruct-q4_K_M`.
 
@@ -279,4 +280,6 @@ docker compose logs -f
 
 ## Licencia
 
-Consulta el repositorio para información de licencia.
+Este proyecto está licenciado bajo la [MIT License](LICENSE).
+
+SPDX-License-Identifier: MIT
