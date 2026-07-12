@@ -5,15 +5,99 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-LLM-black)
 ![n8n](https://img.shields.io/badge/n8n-Automation-EA4B71)
+![OCI](https://img.shields.io/badge/OCI-Cloud-FF6B35?logo=oracle&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-Plataforma de automatización conversacional que combina **n8n** (orquestación), un **agente Python con RAG** (FastAPI + ChromaDB) y **Ollama** (LLM local). Permite chatear con un asistente ("Jeferson") que responde usando documentos PDF indexados y conocimiento general del modelo `llama3.1:8b-instruct-q4_K_M`.
-
-**Valor:** stack 100 % local, sin APIs externas de pago, desplegable en minutos con un solo comando Docker Compose.
 
 ---
 
-## Requisitos previos
+## 🚀 **Demostración en producción**
+
+### **Acceso en vivo: [www.jogdev.com](https://www.jogdev.com)**
+
+Esta plataforma está **desplegada en Oracle Cloud Infrastructure (OCI)** con una arquitectura distribuida en **dos servidores de alto rendimiento**:
+
+| Componente | Especificaciones | Rol |
+|-----------|------------------|-----|
+| **🖥️ Servidor A** | 2 vCPU + 12 GB RAM (OCI) | **n8n** (Chat UI) + **Qdrant** (Vector DB) en Docker |
+| **🖥️ Servidor B** | 2 vCPU + 12 GB RAM (OCI) | **Ollama** (LLM local `llama3.1:8b`) en Docker |
+| **🌐 Dominio** | jogdev.com | IP pública del Servidor A con Nginx SSL/TLS |
+| **🔗 Red** | VPC privada OCI | Comunicación interna segura entre servidores |
+
+---
+
+## 📊 **Arquitectura de producción en OCI**
+
+```mermaid
+graph TB
+    Internet["🌐 INTERNET"]
+    DNS["🔗 DNS<br/>jogdev.com"]
+    Nginx["🔐 NGINX REVERSE PROXY<br/>SSL/TLS Let's Encrypt<br/>Servidor A - IP Pública"]
+    
+    subgraph ServerA["⚙️  SERVIDOR A - OCI (2 vCPU + 12GB RAM)"]
+        n8n["<b>n8n</b><br/>UI :5678"]
+        Agent["<b>FastAPI Agent</b><br/>:8000"]
+        Qdrant["<b>Qdrant</b><br/>:6333"]
+    end
+    
+    subgraph ServerB["⚙️  SERVIDOR B - OCI (2 vCPU + 12GB RAM)"]
+        Ollama["<b>Ollama</b><br/>:11434"]
+    end
+    
+    PDFIndex["📄 PDFs<br/>Indexados"]
+    
+    Internet --> DNS --> Nginx
+    Nginx -->|HTTPS| n8n
+    n8n -->|HTTP POST| Agent
+    Agent -->|Vector Search| Qdrant
+    Agent -->|IP Privada<br/>OCI| Ollama
+    Qdrant --> PDFIndex
+    
+    style Internet fill:#1a1a2e,stroke:#00d4ff,stroke-width:3px,color:#00d4ff,font-weight:bold
+    style DNS fill:#1a1a2e,stroke:#00d4ff,stroke-width:2px,color:#00d4ff
+    style Nginx fill:#16a34a,stroke:#22c55e,stroke-width:3px,color:#fff,font-weight:bold
+    
+    style ServerA fill:#1e40af,stroke:#60a5fa,stroke-width:3px,color:#fff,font-weight:bold
+    style n8n fill:#991b1b,stroke:#fca5a5,stroke-width:2px,color:#fff,font-weight:bold
+    style Agent fill:#7c2d12,stroke:#fdba74,stroke-width:2px,color:#fff,font-weight:bold
+    style Qdrant fill:#4c1d95,stroke:#d8b4fe,stroke-width:2px,color:#fff,font-weight:bold
+    
+    style ServerB fill:#92400e,stroke:#fbbf24,stroke-width:3px,color:#fff,font-weight:bold
+    style Ollama fill:#3f6212,stroke:#84cc16,stroke-width:2px,color:#fff,font-weight:bold
+    
+    style PDFIndex fill:#374151,stroke:#9ca3af,stroke-width:2px,color:#fff
+```
+
+---
+
+## **Flujo de una consulta de usuario (end-to-end)**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User as 👤 Usuario<br/>(Internet)
+    participant Nginx as 🔐 Nginx<br/>(SSL)
+    participant n8n as 💬 n8n<br/>(A)
+    participant Agent as 🤖 FastAPI<br/>(A)
+    participant Qdrant as 🟣 Qdrant<br/>(A)
+    participant Ollama as 🦙 Ollama<br/>(B)
+    
+    User->>Nginx: HTTPS GET jogdev.com
+    Nginx->>n8n: Forward UI
+    User->>n8n: Envía mensaje chat
+    n8n->>Agent: POST /chat
+    Agent->>Qdrant: Vector search
+    Qdrant->>Agent: ✅ PDFs contexto
+    Agent->>Ollama: LLM request<br/>(IP privada)
+    Ollama->>Agent: ✅ Respuesta
+    Agent->>n8n: JSON response
+    n8n->>User: Muestra en UI
+    
+    Note over Agent,Ollama: 🔒 Comunicación privada OCI<br/>Sin exposición a Internet
+```
+
+---
+
+## 📋 **Requisitos previos**
 
 | Requisito | Versión mínima recomendada | Notas |
 |-----------|---------------------------|-------|
@@ -27,7 +111,7 @@ Plataforma de automatización conversacional que combina **n8n** (orquestación)
 
 ---
 
-## Instalación
+## 💻 **Instalación**
 
 ### 1. Clonar el repositorio
 
@@ -44,6 +128,7 @@ cd ia-challenge
 |----------|---------------------|
 | **n8n** | `N8N_HOST`, `N8N_PORT`, `N8N_PROTOCOL`, `WEBHOOK_URL`, `N8N_DEFAULT_FLOWS_PATH` |
 | **ollama** | `OLLAMA_HOST=0.0.0.0` |
+| **qdrant** | `QDRANT_API_KEY` (opcional), puerto `6333` |
 | **python-agent** | Sin variables externas; conecta a Ollama vía `http://ollama:11434` |
 
 Si necesitas personalizar puertos o URLs, edita directamente `docker-compose.yml`.
@@ -69,7 +154,7 @@ ia-challenge/
 
 ---
 
-## Puesta en marcha
+## 🏃 **Puesta en marcha**
 
 Desde la raíz del proyecto:
 
@@ -82,8 +167,9 @@ docker compose up -d --build
 | n8n | `5678` | http://localhost:5678 |
 | python-agent | `8000` | http://localhost:8000 |
 | ollama | `11434` | http://localhost:11434 |
+| qdrant | `6333` | http://localhost:6333 |
 
-Verifica que los tres contenedores estén activos:
+Verifica que los cuatro contenedores estén activos:
 
 ```bash
 docker compose ps
@@ -91,11 +177,11 @@ docker compose ps
 
 ---
 
-## ⚠️ Inicialización de n8n (importante)
+## ⚠️ **Inicialización de n8n (importante)**
 
 En el **primer acceso** a http://localhost:5678, n8n solicitará crear una **cuenta de propietario (owner)**. Este paso **inicializa la base de datos SQLite** en `.n8n/n8n_data/` (`database.sqlite`).
 
-- **No elimines** la carpeta `.n8n/n8n_data/` una vez configurada: perderás credenciales, workflows y claves de cifrado.
+- **No elimnes** la carpeta `.n8n/n8n_data/` una vez configurada: perderás credenciales, workflows y claves de cifrado.
 - Si el contenedor se reinicia antes de completar el registro, espera a que n8n termine de escribir la BD antes de volver a acceder.
 - Tras el registro, **importa y activa** el workflow `workflows/challenge.json`:
   1. En n8n: **Workflows → Import from File** (o arrastra el JSON).
@@ -105,7 +191,7 @@ En el **primer acceso** a http://localhost:5678, n8n solicitará crear una **cue
 
 ---
 
-## Guía de uso básico
+## 📚 **Guía de uso básico**
 
 ### n8n (interfaz de chat)
 
@@ -137,7 +223,7 @@ curl -X POST http://localhost:8000/upload \
   -F "file=@./agent/documents/mi_documento.pdf"
 ```
 
-Al arrancar, el agente escanea automáticamente `agent/documents/*.pdf` y los indexa en ChromaDB.
+Al arrancar, el agente escanea automáticamente `agent/documents/*.pdf` y los indexa en ChromaDB/Qdrant.
 
 **Documentación interactiva:** http://localhost:8000/docs
 
@@ -155,37 +241,44 @@ El script `n8n/init-ollama.sh` inicia `ollama serve` y descarga el modelo si no 
 
 ---
 
-## Arquitectura
+## 🏗️ **Arquitectura (localhost)**
 
 Todos los servicios comparten la red Docker **`ai-network`** (driver `bridge`).
 
 ```mermaid
 flowchart LR
-    User([Usuario]) -->|Chat UI| n8n[n8n :5678]
-    n8n -->|POST /chat| Agent[python-agent :8000]
-    Agent -->|RAG query| Chroma[(ChromaDB)]
-    Agent -->|chat API| Ollama[ollama :11434]
-    Chroma -.->|PDFs| Docs[agent/documents/]
+    User(["👤 Usuario<br/>(localhost)"]) -->|💬 Chat UI| n8n["<b>n8n</b><br/>:5678"]
+    n8n -->|POST /chat| Agent["<b>FastAPI</b><br/>:8000"]
+    Agent -->|RAG Query| Qdrant["<b>Qdrant</b><br/>:6333"]
+    Agent -->|LLM API| Ollama["<b>Ollama</b><br/>:11434"]
+    Qdrant -.->|📄 PDFs| Docs["agent/<br/>documents/"]
+    
+    style User fill:#1a1a2e,stroke:#00d4ff,stroke-width:2px,color:#00d4ff,font-weight:bold
+    style n8n fill:#991b1b,stroke:#fca5a5,stroke-width:2px,color:#fff,font-weight:bold
+    style Agent fill:#7c2d12,stroke:#fdba74,stroke-width:2px,color:#fff,font-weight:bold
+    style Qdrant fill:#4c1d95,stroke:#d8b4fe,stroke-width:2px,color:#fff,font-weight:bold
+    style Ollama fill:#3f6212,stroke:#84cc16,stroke-width:2px,color:#fff,font-weight:bold
+    style Docs fill:#374151,stroke:#9ca3af,stroke-width:2px,color:#fff
 ```
 
 | Componente | Rol |
 |------------|-----|
 | **n8n** | Recibe mensajes del chat y los reenvía al agente vía HTTP Request |
 | **python-agent** | FastAPI: indexa PDFs, recupera contexto (RAG) y genera respuestas con historial |
+| **Qdrant** | Almacén vectorial distribuido (alternativa a ChromaDB) |
 | **Ollama** | Servidor LLM local con `llama3.1:8b-instruct-q4_K_M` |
-| **ChromaDB** | Almacén vectorial persistente en `agent/chroma_db/` |
 
 Flujo de una pregunta:
 
 1. Usuario escribe en el chat de n8n.
 2. n8n llama a `http://python-agent:8000/chat`.
-3. Si el mensaje tiene ≥ 20 caracteres, el agente busca contexto relevante en ChromaDB.
+3. Si el mensaje tiene ≥ 20 caracteres, el agente busca contexto relevante en Qdrant.
 4. El agente envía el prompt (con contexto opcional) a Ollama.
 5. La respuesta JSON vuelve a n8n y se muestra al usuario.
 
 ---
 
-## Solución de problemas
+## 🔧 **Solución de problemas**
 
 ### Permisos de Docker
 
@@ -204,6 +297,7 @@ En Windows, ejecuta Docker Desktop como administrador si hay errores de volumen.
 | 5678 | n8n |
 | 8000 | python-agent |
 | 11434 | ollama |
+| 6333 | qdrant |
 
 ```bash
 # Windows (PowerShell)
@@ -222,6 +316,7 @@ docker compose ps
 docker compose logs n8n
 docker compose logs python-agent
 docker compose logs ollama
+docker compose logs qdrant
 ```
 
 Reconstruir desde cero:
@@ -246,6 +341,12 @@ client = ollama.Client(host='http://ollama:11434')
 
 Asegúrate de que `python-agent` tenga `depends_on: ollama` y que ambos estén en `ai-network`.
 
+### Qdrant no responde
+
+- Verifica que Qdrant esté escuchando: `curl http://localhost:6333/health`
+- Logs: `docker compose logs -f qdrant`
+- URL interna en Docker: `http://qdrant:6333`
+
 ### n8n: workflow sin respuesta
 
 - Confirma que el workflow está **activado**.
@@ -260,7 +361,7 @@ Asegúrate de que `python-agent` tenga `depends_on: ollama` y que ambos estén e
 
 ---
 
-## Comandos útiles
+## 📡 **Comandos útiles**
 
 ```bash
 # Detener servicios
@@ -272,13 +373,116 @@ docker compose down -v
 # Rebuild solo del agente
 docker compose up -d --build python-agent
 
+# Rebuild solo de Qdrant
+docker compose up -d --build qdrant
+
 # Seguir logs en tiempo real
 docker compose logs -f
+
+# Logs específicos
+docker compose logs -f python-agent
+docker compose logs -f ollama
+docker compose logs -f qdrant
 ```
 
 ---
 
-## Licencia
+## 🌐 **Despliegue en OCI (Producción)**
+
+Para replicar la arquitectura de producción en Oracle Cloud Infrastructure:
+
+### **Configuración de servidores**
+
+1. **Crear dos instancias Compute (OCI)**
+   - Imagen: Ubuntu 22.04 (o CentOS 8)
+   - Forma: Standard 2.1 (2 vCPU, 12 GB RAM)
+   - Red: Misma VPC para comunicación privada
+
+2. **Servidor A - n8n + Qdrant**
+   ```bash
+   # Instalar Docker y Docker Compose
+   sudo apt update && sudo apt install -y docker.io docker-compose git
+   sudo usermod -aG docker $USER
+   
+   # Clonar y desplegar
+   git clone https://github.com/Jefer1026/ia-challenge.git
+   cd ia-challenge
+   docker compose up -d --build
+   ```
+
+3. **Servidor B - Ollama**
+   ```bash
+   # Instalar Docker
+   sudo apt update && sudo apt install -y docker.io
+   sudo usermod -aG docker $USER
+   
+   # Descargar e iniciar Ollama
+   docker pull ollama/ollama
+   docker run -d -p 11434:11434 -v ollama:/root/.ollama ollama/ollama
+   docker exec <container_id> ollama pull llama3.1:8b-instruct-q4_K_M
+   ```
+
+4. **Configurar networking**
+   - Obtén la **IP privada** del Servidor B
+   - En Servidor A, actualiza `docker-compose.yml`:
+     ```yaml
+     environment:
+       OLLAMA_HOST: http://<PRIVATE_IP_SERVIDOR_B>:11434
+     ```
+
+5. **SSL/TLS con Let's Encrypt (Nginx en Servidor A)**
+   ```bash
+   # Instalar Nginx
+   sudo apt install -y nginx certbot python3-certbot-nginx
+   
+   # Obtener certificado
+   sudo certbot certonly --dns-cloudflare -d jogdev.com
+   
+   # Configurar Nginx como reverse proxy
+   sudo nano /etc/nginx/sites-available/jogdev.com
+   ```
+   
+   **Config Nginx:**
+   ```nginx
+   upstream n8n {
+       server localhost:5678;
+   }
+   
+   server {
+       listen 443 ssl http2;
+       server_name jogdev.com;
+       
+       ssl_certificate /etc/letsencrypt/live/jogdev.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/jogdev.com/privkey.pem;
+       
+       location / {
+           proxy_pass http://n8n;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   
+   server {
+       listen 80;
+       server_name jogdev.com;
+       return 301 https://$server_name$request_uri;
+   }
+   ```
+
+6. **Security Groups (OCI)**
+   - Servidor A:
+     - Puerto 22 (SSH): desde tu IP
+     - Puerto 80 (HTTP): desde 0.0.0.0
+     - Puerto 443 (HTTPS): desde 0.0.0.0
+   - Servidor B:
+     - Puerto 22 (SSH): desde Servidor A
+     - Puerto 11434 (Ollama): desde IP privada de Servidor A
+
+---
+
+## 📄 **Licencia**
 
 Este proyecto está licenciado bajo la [MIT License](LICENSE).
 
