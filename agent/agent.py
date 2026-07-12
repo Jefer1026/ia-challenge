@@ -91,7 +91,7 @@ class AgentChat:
     def answer(self, user_input):
         # 1. Obtenemos contexto solo si es necesario (lógica de umbral)
         contexto = ""
-        if len(user_input) >= 20:
+        if len(user_input) >= 10:
             contexto = rag.query_data(user_input)
         
         # 2. Construimos el prompt temporal (no lo guardamos en el historial aún)
